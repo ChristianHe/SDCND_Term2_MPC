@@ -15,6 +15,8 @@
 using nlohmann::json;
 using std::string;
 using std::vector;
+using std::cout;
+using std::endl;
 
 // For converting back and forth between radians and degrees.
 constexpr double pi() { return M_PI; }
@@ -47,6 +49,24 @@ int main() {
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
+          double psi_unity = j[1]["psi_unity"];
+
+          // change the reference waypoint from global to vehicle coordinate
+          Eigen::VectorXd trans_ptsx(6);
+          Eigen::VectorXd trans_ptsy(6);
+          for(int i = 0; i < ptsx.size(); i++)
+          {
+            double theta = psi;
+            double diff_x = ptsx[i] - px;
+            double diff_y = ptsy[i] - py;
+            trans_ptsx[i] = (cos(-theta) * diff_x) - (sin(-theta) * diff_y);
+            trans_ptsy[i] = (sin(-theta) * diff_x) + (cos(-theta) * diff_y);
+          }
+
+          // polyfit the waypointtrans_ptsx[i]
+          auto coeffs = polyfit(trans_ptsx, trans_ptsy, 3);
+
+          
 
           /**
            * TODO: Calculate steering angle and throttle using MPC.
@@ -54,6 +74,9 @@ int main() {
            */
           double steer_value;
           double throttle_value;
+
+          throttle_value = 0.1;
+          steer_value = 0;
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the 
@@ -84,6 +107,17 @@ int main() {
            *   the vehicle's coordinate system the points in the simulator are 
            *   connected by a Yellow line
            */
+          //cout << "ptsx size: " << ptsx.size() << endl;
+          for(int i = 0; i < 100; i = i+10)
+          {
+            next_x_vals.push_back(i);
+            next_y_vals.push_back(polyeval(coeffs, i));
+          }
+          
+          // transform the reference point (next_x_vals, next_y_vals) from unity global 
+          // coordinate to vehicle coordinate.
+          // psi_unity shall be used, 
+          // TODO:check the theta meaning.
 
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
@@ -99,7 +133,7 @@ int main() {
           //   around the track with 100ms latency.
           //
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE SUBMITTING.
-          std::this_thread::sleep_for(std::chrono::milliseconds(100));
+          //std::this_thread::sleep_for(std::chrono::milliseconds(100));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }  // end "telemetry" if
       } else {
