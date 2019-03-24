@@ -795,6 +795,8 @@ Eigen-3.3/Eigen/Core
 /home/christian/SDC/SDCND_Term2_MPC/src/Eigen-3.3/Eigen/Core
 
 /home/christian/SDC/SDCND_Term2_MPC/src/helpers.h
+math.h
+-
 string
 -
 Eigen-3.3/Eigen/Core
