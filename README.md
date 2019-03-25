@@ -3,28 +3,28 @@ Self-Driving Car Engineer Nanodegree Program
 
 ---
 
-## The Model
+##The Model
 The vehicle model used here is the suggested Global Kinemtic Model. It has 6 states, position of x,
 and y, velocity, orientation, cross track error and orientation error. 2 actuators are used, throttle
 ranges from -1 to 1, where negative value means breaking and steering angle from -25 degree to 25 degree.
 The update equation is as follows:
-"""
+```
 x_[t+1] = x[t] + v[t] * cos(psi[t]) * dt
 y_[t+1] = y[t] + v[t] * sin(psi[t]) * dt
 psi_[t+1] = psi[t] + v[t] / Lf * (-delta[t]) * dt
 v_[t+1] = v[t] + a[t] * dt
 cte[t+1] = f(x[t]) - y[t] + v[t] * sin(epsi[t]) * dt
 epsi[t+1] = psi[t] - psides[t] + v[t] * (-delta[t]) / Lf * dt
-"""
+```
 The delta here is negative because the delta is positive anti-clockwise while the simulator takes the 
 delta negative anti-clockwise.
 
-## Timestep Length and Frequency
+##Timestep Length and Frequency
 The timestep here is 100 milliseconds and N is 10. As of the latency the simulator in the VM, The total time T here 
 is set to 1s, and N is set to 10 to lower down the use of CPU. Other values are tested but the final one is 1 second 
 with timestep in 100 milliseconds and number N in 10.
 
-## Polynomial Fitting and MPC Preprocessing
+##Polynomial Fitting and MPC Preprocessing
 To make life easier, fisrt I change the waypoint received from simulator from map coordinate to vehicle 
 coordinate with coordinate transform equation. Then with the transformed coordinate, the coefficiencies
 are calculated with ployfit function. the coefficiencies are used to calculate the cross track error and
@@ -32,11 +32,11 @@ orientation error. the cte is equal with 'polyeval(coeffs, 0)' since the y is 0,
 the first order derivative of reference trajectory. The coefficiencies are also used for the reference 
 trajectory ploting.
 
-## Model Predictive Control with Latency
+##Model Predictive Control with Latency
 As I running the simulator within the virtual machine in the VirtualBox. The latency here is quite 
 significant, which confused me a lot at the beginning. To reduce the impact of latency I put much more
 weight on the cost of delta change and throttle change. The cost weights are as follows:
-"""
+```
     const int cte_cost_weight = 20;
     const int epsi_cost_weight = 20;
     const int v_cost_weight = 1;
@@ -44,16 +44,20 @@ weight on the cost of delta change and throttle change. The cost weights are as 
     const int a_cost_weight = 10;
     const int delta_change_cost_weight = 1000;
     const int a_change_cost_weight = 1000;
-"""
+```
 And to tackle with latency, I start projecting the vehicle position forward and slow down the reference velocity.
-The following choices are tested, 
-speed | dt | result
-40 | 0.2 | nok with cost 500
-30 | 0.2 | ok with cost 200
-30 | 0.1 | nok
-10 | 0.1 | ok
-20 | 0.1 | nok
-and it seems that setting 200ms forward with 30 mph can make through the cirle, though
+The following choices are tested,
+
+| speed | dt | result |
+|-|-|-|
+| 40 | 0.2 | nok with cost 500 |
+| 40 | 0.3 | nok |
+| 30 | 0.2 | ok with cost 200 |
+| 30 | 0.1 | nok |
+| 10 | 0.1 | ok |
+| 20 | 0.1 | nok |
+
+And it seems that setting 200ms forward with 30 mph can make through the cirle, though
 the cost is nearly 200.
 
 
