@@ -29,7 +29,7 @@ const double Lf = 2.67;
 
 // Both the reference cross track and orientation errors are 0.
 // The reference velocity is set to 40 mph.
-double ref_v = 10;
+double ref_v = 30;
 
 // The solver takes all the state variables and actuator
 // variables in a singular vector. Thus, we should to establish
@@ -62,7 +62,7 @@ class FG_eval {
     // Any additions to the cost should be added to `fg[0]`.
     fg[0] = 0;
 
-    // Weights for how "important" each cost is - can be tuned
+    // weights of each cost
     const int cte_cost_weight = 20;
     const int epsi_cost_weight = 20;
     const int v_cost_weight = 1;

@@ -49,78 +49,45 @@ int main() {
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
-          double psi_unity = j[1]["psi_unity"];
-#if 0
-          // change the reference waypoint from global to vehicle coordinate
-          Eigen::VectorXd trans_ptsx(6);
-          Eigen::VectorXd trans_ptsy(6);
-          for(int i = 0; i < ptsx.size(); i++)
-          {
-            double diff_x = ptsx[i] - px;
-            double diff_y = ptsy[i] - py;
-            //theta is down side
-            trans_ptsx[i] = (cos(-psi) * diff_x) - (sin(-psi) * diff_y);
-            trans_ptsy[i] = (sin(-psi) * diff_x) + (cos(-psi) * diff_y);
-          }
-
-          // polyfit the waypointtrans_ptsx[i]
-          auto coeffs = polyfit(trans_ptsx, trans_ptsy, 3);
-
-          //calculate the cte and epsi, start at x,y 0, psi 0
-          double cte = polyeval(coeffs, 0) - 0.0;
-          double epsi = 0.0 - atan(coeffs[1]);
-
-          //prepare the intial state
-          VectorXd state(6);
-          state << 0, 0, 0, v, cte, epsi;
-#endif
-          //TODO:tackle with the latency
           double delta = j[1]["steering_angle"];
           double a = j[1]["throttle"];
           
-          // Need Eigen vectors for polyfit
-          Eigen::VectorXd ptsx_car(ptsx.size());
-          Eigen::VectorXd ptsy_car(ptsy.size());
-          
-          // Transform the points to the vehicle's orientation
+          // change the reference waypoint from global to vehicle coordinate
+          Eigen::VectorXd trans_ptsx(ptsx.size());
+          Eigen::VectorXd trans_ptsy(ptsy.size());
           for (int i = 0; i < ptsx.size(); i++) {
             double x = ptsx[i] - px;
             double y = ptsy[i] - py;
-            ptsx_car[i] = x * cos(-psi) - y * sin(-psi);
-            ptsy_car[i] = x * sin(-psi) + y * cos(-psi);
+            trans_ptsx[i] = x * cos(-psi) - y * sin(-psi);
+            trans_ptsy[i] = x * sin(-psi) + y * cos(-psi);
           }
           
-          /*
-          * Calculate steering angle and throttle using MPC.
-          * Both are in between [-1, 1].
-          * Simulator has 100ms latency, so will predict state at that point in time.
-          * This will help the car react to where it is actually at by the point of actuation.
-          */
+          // polyfit the waypoint
+          auto coeffs = polyfit(trans_ptsx, trans_ptsy, 3);
           
-          // Fits a 3rd-order polynomial to the above x and y coordinates
-          auto coeffs = polyfit(ptsx_car, ptsy_car, 3);
-          
-          // Calculates the cross track error
-          // Because points were transformed to vehicle coordinates, x & y equal 0 below.
-          // 'y' would otherwise be subtracted from the polyeval value
+          // calculate the cte and epsi, start at x,y 0, psi 0
           double cte = polyeval(coeffs, 0);
-          
-          // Calculate the orientation error
-          // Derivative of the polyfit goes in atan() below
-          // Because x = 0 in the vehicle coordinates, the higher orders are zero
-          // Leaves only coeffs[1]
           double epsi = -atan(coeffs[1]);
           
+          // tackle with latency
           // Center of gravity needed related to psi and epsi
           const double Lf = 2.67;
           
           // Latency for predicting time at actuation
-          const double dt = 0.1;
+          const double dt = 0.2;
+
+          // ref_v dt tuning
+          // 30 0.2 ok cost 200
+          // 20 0.2 ok
+          // 10 0.1 ok
+          // 40 0.2 nok cost 500 more 
+          // 40 0.3 nok
+          // 30 0.1 nok
+          // 20 0.1 nok
           
-          // Predict state after latency
-          // x, y and psi are all zero after transformation above
-          double pred_px = 0.0 + v * dt; // Since psi is zero, cos(0) = 1, can leave out
-          const double pred_py = 0.0; // Since sin(0) = 0, y stays as 0 (y + v * 0 * dt)
+          // predict with the global kinematic model suggested
+          double pred_px = 0.0 + v * dt; 
+          double pred_py = 0.0;
           double pred_psi = 0.0 + v * -delta / Lf * dt;
           double pred_v = v + a * dt;
           double pred_cte = cte + v * sin(epsi) * dt;
@@ -188,8 +155,6 @@ int main() {
           // transform the reference point (next_x_vals, next_y_vals) from unity global 
           // coordinate to vehicle coordinate.
           // psi_unity shall be used, 
-          // TODO:check the theta meaning.
-
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
 
